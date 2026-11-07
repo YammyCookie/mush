@@ -1,131 +1,149 @@
 'use strict';
-(() => {
-  const $ = id => document.getElementById(id);
-  const viewer = $('viewer');
-  let photos = [], visible = [], current = 0, activeAlbum = '', lastFocus;
-  let touchStart = null;
-  $('year').textContent = $('copyright-year').textContent = String(new Date().getFullYear());
-  function safeImagePath(value) {
-    return typeof value === 'string' && /^photos\/[a-f0-9]{64}(?:-thumb)?\.jpg$/.test(value);
+
+const byId = id => document.getElementById(id);
+const viewer = byId('viewer');
+let photographs = [];
+let selection = [];
+let index = 0;
+let thumbnails = false;
+
+function namedTitle(photo) {
+  return /^(PXL|IMG|DSC|DSCF|DJI)[ _.-]*\d/i.test(photo.title) ? '' : photo.title;
+}
+
+function showPhotograph() {
+  const photo = selection[index];
+  const caption = [photo.album, namedTitle(photo)].filter(Boolean).join(' — ');
+  const position = (index + 1) + ' / ' + selection.length;
+  byId('print').src = photo.src;
+  byId('print').alt = namedTitle(photo) || photo.album + ', photograph ' + (index + 1);
+  byId('caption').textContent = caption;
+  byId('count').textContent = position;
+  if (viewer.open) {
+    byId('large').src = photo.src;
+    byId('large').alt = byId('print').alt;
+    byId('large-caption').textContent = caption + ' · ' + position;
   }
-  function updateViewer() {
-    const p = visible[current];
-    if (!p) return;
-    $('viewer-image').src = p.src;
-    $('viewer-image').alt = p.title || 'Photograph';
-    $('viewer-title').textContent = p.title;
-    $('viewer-album').textContent = p.album;
-    $('viewer-count').textContent = `${String(current + 1).padStart(2, '0')} / ${String(visible.length).padStart(2, '0')}`;
-    $('previous').disabled = $('next').disabled = visible.length < 2;
-  }
-  function move(offset) {
-    if (!visible.length) return;
-    current = (current + offset + visible.length) % visible.length;
-    updateViewer();
-  }
-  function openPhoto(index, trigger) {
-    current = index;
-    lastFocus = trigger;
-    updateViewer();
-    viewer.showModal();
-    document.body.classList.add('viewing');
-    $('close').focus();
-  }
-  function render() {
-    const fragment = document.createDocumentFragment();
-    visible.forEach((p, index) => {
-      const figure = document.createElement('figure');
-      figure.className = 'photo-card';
-      const button = document.createElement('button');
-      button.className = 'photo-button';
-      button.type = 'button';
-      button.setAttribute('aria-label', `View ${p.title || 'photograph'}${p.album ? `, ${p.album}` : ''}`);
-      const img = document.createElement('img');
-      img.src = p.thumb;
-      img.alt = p.title || 'Photograph';
-      img.width = p.thumbWidth;
-      img.height = p.thumbHeight;
-      img.loading = index < 3 ? 'eager' : 'lazy';
-      img.decoding = 'async';
-      const icon = document.createElement('span');
-      icon.className = 'photo-open';
-      icon.textContent = '↗';
-      icon.setAttribute('aria-hidden', 'true');
-      button.append(img, icon);
-      button.addEventListener('click', () => openPhoto(index, button));
-      const caption = document.createElement('figcaption');
-      caption.className = 'photo-caption';
-      const title = document.createElement('span'), album = document.createElement('span');
-      title.className = 'title';
-      album.className = 'album';
-      title.textContent = p.title;
-      album.textContent = p.album;
-      caption.append(title, album);
-      figure.append(button, caption);
-      fragment.append(figure);
+  for (const id of ['previous', 'next', 'back', 'forward']) byId(id).disabled = selection.length < 2;
+}
+
+function move(step) {
+  if (!selection.length || thumbnails) return;
+  index = (index + step + selection.length) % selection.length;
+  showPhotograph();
+}
+
+function showGrid() {
+  const fragment = document.createDocumentFragment();
+  selection.forEach((photo, number) => {
+    const button = document.createElement('button');
+    const image = document.createElement('img');
+    image.src = photo.thumb;
+    image.alt = namedTitle(photo) || photo.album + ', photograph ' + (number + 1);
+    image.width = photo.thumbWidth;
+    image.height = photo.thumbHeight;
+    image.loading = 'lazy';
+    button.append(image);
+    button.addEventListener('click', () => {
+      index = number;
+      setMode(false);
+      byId('enlarge').focus();
     });
-    $('gallery').replaceChildren(fragment);
-    $('empty').hidden = photos.length > 0;
-    $('photo-total').textContent = photos.length ? `${String(visible.length).padStart(2, '0')} photographs` : '';
-  }
-  function filter(album) {
-    activeAlbum = album;
-    visible = photos.filter(p => !album || p.album === album);
-    document.querySelectorAll('.filter').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.album === activeAlbum)));
-    render();
-  }
-  function createFilters() {
-    const albums = [...new Set(photos.map(p => p.album))].filter(Boolean).sort((a,b) => a.localeCompare(b));
-    ['', ...albums].forEach(album => {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'filter';
-      button.textContent = album || 'All photographs';
-      button.dataset.album = album;
-      button.setAttribute('aria-pressed', String(!album));
-      button.addEventListener('click', () => filter(album));
-      $('filters').append(button);
-    });
-  }
-  $('close').addEventListener('click', () => viewer.close());
-  viewer.addEventListener('close', () => {
-    document.body.classList.remove('viewing');
-    $('viewer-image').removeAttribute('src');
-    lastFocus?.focus();
+    fragment.append(button);
   });
-  $('previous').addEventListener('click', () => move(-1));
-  $('next').addEventListener('click', () => move(1));
-  viewer.addEventListener('keydown', e => {
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-      e.preventDefault();
-      move(e.key === 'ArrowLeft' ? -1 : 1);
-    }
-  });
-  $('viewer-stage').addEventListener('touchstart', e => {
-    touchStart = e.touches.length === 1 ? {x:e.touches[0].clientX,y:e.touches[0].clientY} : null;
-  }, {passive:true});
-  $('viewer-stage').addEventListener('touchend', e => {
-    if (!touchStart || !e.changedTouches.length) return;
-    const dx = e.changedTouches[0].clientX - touchStart.x, dy = e.changedTouches[0].clientY - touchStart.y;
-    if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.5) move(dx < 0 ? 1 : -1);
-    touchStart = null;
-  }, {passive:true});
-  $('viewer-stage').addEventListener('touchcancel', () => { touchStart = null; });
-  $('shuffle').addEventListener('click', () => {
-    for (let i = visible.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [visible[i], visible[j]] = [visible[j], visible[i]];
-    }
-    render();
-  });
-  fetch('./data/photos.json', {cache:'no-cache'})
-    .then(r => { if (!r.ok) throw new Error('Gallery unavailable'); return r.json(); })
-    .then(data => {
-      if (!Array.isArray(data.photos)) throw new Error('Invalid gallery');
-      photos = data.photos.filter(p => safeImagePath(p.src) && safeImagePath(p.thumb) && typeof p.title === 'string' && typeof p.album === 'string' && p.thumbWidth > 0 && p.thumbHeight > 0);
-      $('gallery-toolbar').hidden = photos.length === 0;
-      createFilters();
-      filter('');
-    })
-    .catch(() => { $('empty').hidden = true; $('load-error').hidden = false; });
-})();
+  byId('grid').replaceChildren(fragment);
+}
+
+function setMode(gridMode) {
+  thumbnails = gridMode;
+  byId('grid').hidden = !gridMode;
+  byId('feature').hidden = gridMode;
+  byId('paging').hidden = gridMode;
+  byId('shuffle').hidden = !gridMode || selection.length < 2;
+  byId('mode').textContent = gridMode ? 'Show photograph' : 'Show thumbnails';
+  byId('mode').setAttribute('aria-pressed', String(gridMode));
+  if (gridMode) showGrid();
+  else showPhotograph();
+}
+
+function selectAlbum(album) {
+  selection = photographs.filter(photo => !album || photo.album === album);
+  index = 0;
+  for (const button of byId('albums').children) {
+    button.setAttribute('aria-pressed', String(button.dataset.album === album));
+  }
+  setMode(thumbnails);
+}
+
+async function initialize() {
+  const response = await fetch('./data/photos.json', {cache: 'no-cache'});
+  if (!response.ok) throw new Error('Gallery unavailable');
+  const data = await response.json();
+  const validPath = path => /^photos\/[a-f0-9]{64}(?:-thumb)?\.jpg$/.test(path);
+  photographs = data.photos.filter(photo => validPath(photo.src) && validPath(photo.thumb));
+  if (!photographs.length) {
+    byId('status').textContent = 'No photographs yet.';
+    return;
+  }
+  // Lead with the Edinburgh skyline when it is present in the published selection.
+  const cover = photographs.findIndex(photo => photo.id === 'd6a6533cd71be748905b4a1a6ff86f4cff6f2e5e13a864dd7908fc9c0371e43d');
+  if (cover > 0) photographs.unshift(photographs.splice(cover, 1)[0]);
+  const albums = [...new Set(photographs.map(photo => photo.album))].filter(Boolean).sort();
+  for (const album of ['', ...albums]) {
+    const button = document.createElement('button');
+    button.textContent = album || 'Portfolio';
+    button.dataset.album = album;
+    button.addEventListener('click', () => selectAlbum(album));
+    byId('albums').append(button);
+  }
+  byId('tools').hidden = false;
+  byId('status').hidden = true;
+  selectAlbum('');
+}
+
+byId('mode').onclick = () => setMode(!thumbnails);
+byId('shuffle').onclick = () => {
+  for (let i = selection.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [selection[i], selection[j]] = [selection[j], selection[i]];
+  }
+  index = 0;
+  showGrid();
+};
+byId('previous').onclick = byId('back').onclick = () => move(-1);
+byId('next').onclick = byId('forward').onclick = () => move(1);
+byId('enlarge').onclick = () => {
+  viewer.showModal();
+  showPhotograph();
+  byId('close').focus();
+};
+byId('close').onclick = () => viewer.close();
+document.addEventListener('keydown', event => {
+  if (event.altKey || event.ctrlKey || event.metaKey || thumbnails) return;
+  if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+    event.preventDefault();
+    move(event.key === 'ArrowLeft' ? -1 : 1);
+  }
+});
+for (const element of [byId('enlarge'), byId('large')]) {
+  let start;
+  let swiped = false;
+  element.addEventListener('touchstart', event => {
+    swiped = false;
+    start = event.touches.length === 1 ? event.touches[0] : null;
+  }, {passive: true});
+  element.addEventListener('touchend', event => {
+    if (!start) return;
+    const dx = event.changedTouches[0].clientX - start.clientX;
+    const dy = event.changedTouches[0].clientY - start.clientY;
+    start = null;
+    swiped = Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5;
+    if (swiped) move(dx < 0 ? 1 : -1);
+  }, {passive: true});
+  element.addEventListener('touchcancel', () => { start = null; });
+  element.addEventListener('click', event => {
+    if (swiped) { event.stopImmediatePropagation(); swiped = false; }
+  }, true);
+}
+initialize().catch(() => { byId('status').textContent = 'The photographs could not load. Please refresh to try again.'; });
+

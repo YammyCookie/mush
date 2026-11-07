@@ -3,44 +3,38 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f4f2ed">
-  <meta name="description" content="mush — a personal collection of photographs.">
-  <title>mush — photographs</title>
+  <meta name="theme-color" content="#ffffff">
+  <meta name="description" content="A personal portfolio of photographs by mush.">
+  <title>mush — Photography</title>
   <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./assets/style.css">
-  <script src="./assets/gallery.js" defer></script>
+  <link rel="stylesheet" href="./assets/style.css?v=white1">
+  <script defer src="./assets/gallery.js?v=white1"></script>
 </head>
 <body>
   <a class="skip" href="#photographs">Skip to photographs</a>
-  <header class="site-header">
-    <a class="wordmark" href="./" aria-label="mush home">mush<span aria-hidden="true">✳</span></a>
-    <span class="header-note">A personal photo journal</span>
-    <a class="nav-link" href="#photographs">Explore <span aria-hidden="true">↘</span></a>
-  </header>
-  <main>
-    <section class="intro" aria-labelledby="intro-title">
-      <div class="intro-top"><span class="eyebrow">An ongoing collection</span><span class="edition">PHOTOGRAPHS / <span id="year"></span></span></div>
-      <h1 id="intro-title">A little closer.<br><em>A little longer.</em></h1>
-      <div class="intro-bottom"><p>Places, people, and the things in between.<br>A few moments I wanted to keep.</p><a class="scroll-link" href="#photographs" aria-label="Scroll to photographs">↓</a></div>
-    </section>
-    <section id="photographs" aria-labelledby="gallery-title">
-      <div class="collection-heading"><h2 id="gallery-title">Selected photographs</h2><span class="photo-total" id="photo-total" aria-live="polite"></span></div>
-      <div class="gallery-toolbar" id="gallery-toolbar" hidden>
-        <div class="filters" id="filters" role="group" aria-label="Filter photographs by collection"></div>
-        <button class="shuffle" id="shuffle" type="button">Shuffle <span aria-hidden="true">↝</span></button>
+  <div class="layout">
+    <header>
+      <h1><a href="./" aria-label="mush home">mush</a></h1>
+      <nav id="albums" aria-label="Photograph collections"></nav>
+      <div class="controls" id="tools" hidden>
+        <div class="paging" id="paging"><button id="previous" aria-label="Previous photograph">Prev</button><span aria-hidden="true">/</span><button id="next" aria-label="Next photograph">Next</button></div>
+        <button id="mode" aria-controls="photographs" aria-pressed="false">Show thumbnails</button>
+        <button id="shuffle" hidden>Shuffle</button>
       </div>
-      <div class="gallery" id="gallery"></div>
-      <div class="empty" id="empty"><span class="empty-mark" aria-hidden="true">[ &nbsp; ]</span><h3>A collection in progress.</h3><p>Photographs will find their way here soon.</p></div>
-      <p class="load-error" id="load-error" hidden>The photographs couldn’t load. Please try refreshing the page.</p>
-      <noscript><p>Please enable JavaScript to explore the photographs.</p></noscript>
-    </section>
-    <section class="closing"><span class="eyebrow">The journal stays open.</span><p>More moments to come.</p><a href="#" class="back-top">Back to top ↑</a></section>
-  </main>
-  <footer><a href="./" class="footer-brand">mush</a><span>Photographs, collected along the way.</span><span>© <span id="copyright-year"></span> mush</span></footer>
-  <dialog id="viewer" aria-label="Photograph viewer">
-    <div class="viewer-bar"><span id="viewer-count" aria-live="polite"></span><button id="close" class="viewer-close" type="button" aria-label="Close photograph">Close <span aria-hidden="true">×</span></button></div>
-    <div class="viewer-stage" id="viewer-stage"><button id="previous" class="viewer-arrow previous" type="button" aria-label="Previous photograph">←</button><img id="viewer-image" alt=""><button id="next" class="viewer-arrow next" type="button" aria-label="Next photograph">→</button></div>
-    <div class="viewer-caption"><span id="viewer-title"></span><span id="viewer-album"></span></div>
+    </header>
+    <main id="photographs" tabindex="-1">
+      <p id="status" role="status">Loading photographs…</p>
+      <figure id="feature" hidden>
+        <button id="enlarge" class="stage" aria-label="Enlarge photograph"><img id="print" alt=""></button>
+        <figcaption><span id="caption"></span><span id="count" aria-live="polite"></span></figcaption>
+      </figure>
+      <div id="grid" aria-label="Photograph thumbnails" hidden></div>
+    </main>
+  </div>
+  <dialog id="viewer" aria-label="Enlarged photograph">
+    <button id="close">Close ×</button>
+    <img id="large" alt="">
+    <div class="dialog-footer"><span id="large-caption"></span><div class="paging"><button id="back" aria-label="Previous enlarged photograph">Prev</button> / <button id="forward" aria-label="Next enlarged photograph">Next</button></div></div>
   </dialog>
 </body>
 </html>
